@@ -34,7 +34,8 @@ class EmailService(AviseringService):
         while retries < self.max_retries:
             try:
                 with smtplib.SMTP(self.config["smtp_server"], self.config["smtp_port"], timeout=30) as server:
-                    server.starttls(context=ssl.create_default_context())
+                    context = ssl._create_unverified_context()
+                    server.starttls(context=context)
                     server.login(self.config["username"], self.config["password"])
                     server.send_message(msg)
                 return {"status": "success", "response": f"E-post skickad till {to}"}
