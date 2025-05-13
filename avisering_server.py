@@ -15,55 +15,149 @@ app = Flask(__name__)
 sms = SMSService()
 email = EmailService()
 
-@app.route('/')
+@app.route("/")
 def index():
     return '''
     <!DOCTYPE html>
     <html lang="sv">
     <head>
         <meta charset="UTF-8">
-        <title>SMS-tjänst</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>Aviseringstjänst – SMS & E-post</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
         <style>
             body {
-                font-family: Arial, sans-serif;
-                background-color: #f8f9fa;
-                color: #333;
-                max-width: 700px;
-                margin: 40px auto;
-                padding: 20px;
-                border-radius: 10px;
-                background: white;
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                background-color: #121212;
+                color: #e0e0e0;
+                font-family: 'Segoe UI', sans-serif;
             }
-            h1 {
-                color: #198754;
+            .container {
+                max-width: 800px;
+                background-color: #1e1e1e;
+                padding: 2rem;
+                margin: 3rem auto;
+                border-radius: 12px;
+                box-shadow: 0 0 20px rgba(0,0,0,0.6);
             }
-            code {
-                background: #e9ecef;
-                padding: 2px 6px;
-                border-radius: 4px;
+            input, textarea, select {
+                background-color: #2c2c2c;
+                color: #fff;
+                border: 1px solid #444;
             }
-            ul {
-                line-height: 1.6;
+            .form-label {
+                margin-top: 1rem;
+            }
+            pre {
+                background-color: #2c2c2c;
+                padding: 1rem;
+                border-radius: 8px;
+                color: #ccc;
+            }
+            .spinner-border {
+                display: none;
+                margin-top: 1rem;
             }
         </style>
     </head>
     <body>
-        <h1>✅ SMS-tjänsten är igång!</h1>
-        <p>För att skicka ett SMS, gör ett anrop till <code>/send</code> med följande URL-parametrar:</p>
-        <ul>
-            <li><b>telnr</b>: Telefonnummer i internationellt format (ex: 46701234567)</li>
-            <li><b>message</b>: Själva meddelandet</li>
-            <li><b>action</b>: Måste vara <code>sms</code></li>
-            <li><b>subject</b>: (valfritt) Ämnesrad</li>
-            <li><b>id</b>: (valfritt) Identifierare för avsändaren</li>
-        </ul>
-        <p><b>Exempel:</b></p>
-        <code>/send?telnr=46701234567&message=Test&action=sms</code>
-        <p style="margin-top: 30px; font-size: 0.9em; color: #666;">Powered by Flask & HelloSMS</p>
+        <div class="container">
+            <h1 class="text-info mb-3">📬 Aviseringstjänst</h1>
+            <p class="lead">Skicka SMS eller e-post via ett enkelt API-anrop. Endast <code>POST</code>-anrop med JSON stöds.</p>
+
+            <h4>🧪 Testformulär</h4>
+            <form id="notifyForm">
+                <label class="form-label" for="action">Typ av utskick</label>
+                <select id="action" class="form-select" required>
+                    <option value="sms">SMS</option>
+                    <option value="email">E-post</option>
+                </select>
+
+                <label class="form-label" for="to">Mottagare (to)</label>
+                <input type="text" class="form-control" id="to" placeholder="+46701234567 eller mail@ex.se" required>
+
+                <label class="form-label" for="from">Avsändare (from)</label>
+                <input type="text" class="form-control" id="from" placeholder="TrafikInfo eller epost@avsandare.se" required>
+
+                <div id="subjectGroup">
+                    <label class="form-label" for="subject">Ämne (endast e-post)</label>
+                    <input type="text" class="form-control" id="subject" placeholder="Rubrik (frivillig)">
+                </div>
+
+                <label class="form-label" for="message">Meddelande</label>
+                <textarea class="form-control" id="message" rows="3" required>Hej! Detta är ett test.</textarea>
+
+                <button type="submit" class="btn btn-primary mt-3">📤 Skicka avisering</button>
+                <div class="spinner-border text-info" id="spinner" role="status">
+                    <span class="visually-hidden">Skickar...</span>
+                </div>
+            </form>
+
+            <div id="responseBox" class="mt-4"></div>
+
+            <hr/>
+            <h5>📦 API-användning</h5>
+            <p>Skicka ett <strong>POST</strong>-anrop till <code>/send</code> med följande JSON:</p>
+            <pre>{
+  "action": "sms" eller "email",
+  "to": "+46701234567" eller "e-postadress",
+  "from": "TrafikInfo",
+  "message": "Meddelandetext",
+  "subject": "Rubrik (valfritt, endast e-post)"
+}</pre>
+
+            <p class="text-muted small mt-4">Byggd med Flask, HelloSMS och SMTP. © 2025</p>
+        </div>
+
+        <script>
+            const actionField = document.getElementById("action");
+            const subjectGroup = document.getElementById("subjectGroup");
+
+            actionField.addEventListener("change", () => {
+                subjectGroup.style.display = actionField.value === "email" ? "block" : "none";
+            });
+
+            document.getElementById("notifyForm").addEventListener("submit", async function (e) {
+                e.preventDefault();
+
+                const action = document.getElementById("action").value;
+                const to = document.getElementById("to").value;
+                const from = document.getElementById("from").value;
+                const subject = document.getElementById("subject").value;
+                const message = document.getElementById("message").value;
+
+                const payload = {
+                    action, to, from, message
+                };
+                if (action === "email") payload.subject = subject;
+
+                document.getElementById("spinner").style.display = "inline-block";
+
+                try {
+                    const res = await fetch("/send", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                    const json = await res.json();
+                    document.getElementById("spinner").style.display = "none";
+                    document.getElementById("responseBox").innerHTML = `
+                        <div class="alert alert-${json.status === 'success' ? 'success' : 'danger'}">
+                            <strong>${json.status.toUpperCase()}:</strong> ${json.response || json.error}
+                        </div>`;
+                } catch (err) {
+                    document.getElementById("spinner").style.display = "none";
+                    document.getElementById("responseBox").innerHTML = `
+                        <div class="alert alert-danger">❌ Ett tekniskt fel uppstod.</div>`;
+                }
+            });
+
+            // Init state
+            window.onload = () => {
+                subjectGroup.style.display = actionField.value === "email" ? "block" : "none";
+            };
+        </script>
     </body>
     </html>
-    '''
 
 log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
 os.makedirs(log_dir, exist_ok=True)
