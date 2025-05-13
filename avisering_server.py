@@ -158,6 +158,7 @@ def index():
         </script>
     </body>
     </html>
+    '''
 
 log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
 os.makedirs(log_dir, exist_ok=True)
