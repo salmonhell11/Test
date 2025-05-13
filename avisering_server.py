@@ -15,6 +15,56 @@ app = Flask(__name__)
 sms = SMSService()
 email = EmailService()
 
+@app.route('/')
+def index():
+    return '''
+    <!DOCTYPE html>
+    <html lang="sv">
+    <head>
+        <meta charset="UTF-8">
+        <title>SMS-tjänst</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f8f9fa;
+                color: #333;
+                max-width: 700px;
+                margin: 40px auto;
+                padding: 20px;
+                border-radius: 10px;
+                background: white;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            }
+            h1 {
+                color: #198754;
+            }
+            code {
+                background: #e9ecef;
+                padding: 2px 6px;
+                border-radius: 4px;
+            }
+            ul {
+                line-height: 1.6;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>✅ SMS-tjänsten är igång!</h1>
+        <p>För att skicka ett SMS, gör ett anrop till <code>/send</code> med följande URL-parametrar:</p>
+        <ul>
+            <li><b>telnr</b>: Telefonnummer i internationellt format (ex: 46701234567)</li>
+            <li><b>message</b>: Själva meddelandet</li>
+            <li><b>action</b>: Måste vara <code>sms</code></li>
+            <li><b>subject</b>: (valfritt) Ämnesrad</li>
+            <li><b>id</b>: (valfritt) Identifierare för avsändaren</li>
+        </ul>
+        <p><b>Exempel:</b></p>
+        <code>/send?telnr=46701234567&message=Test&action=sms</code>
+        <p style="margin-top: 30px; font-size: 0.9em; color: #666;">Powered by Flask & HelloSMS</p>
+    </body>
+    </html>
+    '''
+
 log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
 os.makedirs(log_dir, exist_ok=True)
 
@@ -74,9 +124,3 @@ def send_notification() -> Union[Dict[str, Any], tuple[Dict[str, Any], int]]:
 
     logging.info("Avisering: %s", log_entry)
     return jsonify({**result, "log": log_entry})
-
-from flask import send_file
-
-@app.route("/")
-def index():
-    return send_file("index.html")
